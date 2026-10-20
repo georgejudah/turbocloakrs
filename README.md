@@ -24,6 +24,24 @@ and packaged with Maturin.
   response.
 - No Python runtime dependencies.
 
+## Performance
+
+Measured with Python 3.14 on Linux x86_64 using the release wheel. Times are
+average (mean) latency; results vary by hardware and input content.
+
+| Workload | `sanitize_text` | `inspect_all` |
+|---|---:|---:|
+| 94 B PII sample | 7.9 µs | 13.2 µs |
+| 1 KB safe | 13.2 µs | 43.2 µs |
+| 1 KB PII-heavy | 44.1 µs | 92.7 µs |
+| 10 KB safe | 168 µs | 385 µs |
+| 10 KB PII-heavy | 588 µs | 827 µs |
+| 140 KB safe | 1.71 ms | 6.67 ms |
+
+Average throughput across these workloads is roughly **45 MB/s** for
+`sanitize_text` and **17 MB/s** for `inspect_all`. Typical 1–10 KB prompts
+average under one millisecond on this machine.
+
 ## Install
 
 ```bash
@@ -125,6 +143,14 @@ git push origin v0.1.0-test1
 
 Test tags publish only to TestPyPI; regular tags build wheels and publish to
 PyPI when `PUBLISH_TO_PYPI` is enabled.
+
+## Limitations
+
+`turbocloak` is a deterministic first line of defense. It does not decode
+base64/ROT13 payloads, translate non-English text, or replace model-level
+safety controls. Heuristics can produce false positives and false negatives;
+use the packages, vault, and report fields as part of a broader security
+strategy.
 
 ## Links
 

@@ -15,11 +15,23 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Dependabot configuration for Cargo and GitHub Actions.
 - Contributing, security policy, and changelog documentation.
 - PyPI and CI badges in the README.
+- Average benchmark results documented in the README.
+- Red-team regression suite covering paraphrases, obfuscation, false-positive
+  bait, and alternate PII/secret formats.
+- Detection for short instruction overrides, role-play bypasses, prompt leaks,
+  leetspeak, Cyrillic homoglyphs, meta-refresh, SVG event handlers, and
+  protocol-relative images.
+- Detection for zero-width-split credentials, password assignments, obfuscated
+  emails, contiguous and international phone numbers, contiguous SSNs, and
+  IPv4 addresses with leading zeros.
 
 ### Fixed
 
 - Upgraded PyO3 to 0.29.3 to address RUSTSEC-2026-0176 and
   RUSTSEC-2026-0177.
+- Reduced secret false positives for UUIDs, git SHAs, hex digests, and URL path
+  segments.
+- Avoided injection false positives on negated safety instructions.
 
 ## [0.1.0] - 2026-10-20
 

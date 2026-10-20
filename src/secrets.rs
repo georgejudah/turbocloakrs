@@ -2,6 +2,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::engine::{redact_hits, select_non_overlapping, Hit};
+use crate::injection;
 use crate::vault::Vault;
 
 struct SecretPattern {
@@ -80,6 +81,11 @@ static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             r"(?i)\bBearer\s+[A-Za-z0-9\-._~+/]{16,}=*\b",
         ),
         (
+            "password",
+            "PASSWORD",
+            r#"(?i)\b(?:password|passwd|pwd|passphrase)\s*[:=]\s*['"]?[^\s'"]{8,}['"]?"#,
+        ),
+        (
             "generic_api_key",
             "API_KEY",
             r#"(?i)\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret)\s*[:=]\s*['"][A-Za-z0-9_\-./+=]{16,}['"]"#,
@@ -101,42 +107,106 @@ static HIGH_ENTROPY_RE: Lazy<Regex> =
 
 pub(crate) fn secret_hits(text: &str) -> Vec<Hit> {
     let mut hits = Vec::new();
+    scan_secret_hits(text, None, text.len(), &mut hits);
 
+    // Credentials split with zero-width or bidi characters are still the same
+    // secret. Scan a normalized copy and map spans back to the original text.
+    if injection::has_invisible(text) {
+        let (normalized, mapping) = normalize_visible(text);
+        scan_secret_hits(&normalized, Some(&mapping), text.len(), &mut hits);
+    }
+
+    hits
+}
+
+fn scan_secret_hits(
+    text: &str,
+    mapping: Option<&[usize]>,
+    original_len: usize,
+    hits: &mut Vec<Hit>,
+) {
     for (index, pattern) in SECRET_PATTERNS.iter().enumerate() {
         for matched in pattern.regex.find_iter(text) {
+            let (start, end) = map_span(matched.start(), matched.end(), mapping, original_len);
             hits.push(Hit {
                 kind: pattern.kind,
                 token_prefix: pattern.token_prefix,
-                start: matched.start(),
-                end: matched.end(),
+                start,
+                end,
                 priority: index as u16,
             });
         }
     }
 
     for matched in HIGH_ENTROPY_RE.find_iter(text) {
-        if is_high_entropy(matched.as_str()) {
+        if is_high_entropy(matched.as_str()) && !is_url_context(text, matched.start()) {
+            let (start, end) = map_span(matched.start(), matched.end(), mapping, original_len);
             hits.push(Hit {
                 kind: "high_entropy",
                 token_prefix: "SECRET",
-                start: matched.start(),
-                end: matched.end(),
+                start,
+                end,
                 priority: 500,
             });
         }
     }
+}
 
-    hits
+fn map_span(
+    start: usize,
+    end: usize,
+    mapping: Option<&[usize]>,
+    original_len: usize,
+) -> (usize, usize) {
+    match mapping {
+        Some(mapping) => (
+            mapping[start],
+            mapping.get(end).copied().unwrap_or(original_len),
+        ),
+        None => (start, end),
+    }
+}
+
+fn normalize_visible(text: &str) -> (String, Vec<usize>) {
+    let mut normalized = String::with_capacity(text.len());
+    let mut mapping = Vec::with_capacity(text.len() + 1);
+
+    for (index, ch) in text.char_indices() {
+        if injection::is_invisible_char(ch) {
+            continue;
+        }
+
+        normalized.push(ch);
+        for _ in 0..ch.len_utf8() {
+            mapping.push(index);
+        }
+    }
+
+    mapping.push(text.len());
+    (normalized, mapping)
 }
 
 /// Fast boolean scan that avoids building the full hit list.
 pub fn contains_secrets(text: &str) -> bool {
+    if scan_matches_secret(text) {
+        return true;
+    }
+
+    if injection::has_invisible(text) {
+        let (normalized, _) = normalize_visible(text);
+        return scan_matches_secret(&normalized);
+    }
+
+    false
+}
+
+fn scan_matches_secret(text: &str) -> bool {
     SECRET_PATTERNS
         .iter()
         .any(|pattern| pattern.regex.is_match(text))
-        || HIGH_ENTROPY_RE
-            .find_iter(text)
-            .any(|matched| is_high_entropy(matched.as_str()))
+        || HIGH_ENTROPY_RE.find_iter(text).any(|matched| {
+            is_high_entropy(matched.as_str()) && !is_url_context(text, matched.start())
+        })
 }
 
 /// Redact credentials using kind-specific tokens such as `[OPENAI_API_KEY_1]`.
@@ -155,7 +225,12 @@ pub fn find_secrets(text: &str) -> Vec<String> {
 }
 
 fn is_high_entropy(candidate: &str) -> bool {
-    if candidate.len() < 24 {
+    if candidate.len() < 24 || is_uuid(candidate) {
+        return false;
+    }
+
+    // Commit SHAs and hex digests are high-entropy but are not credentials.
+    if candidate.len() >= 32 && candidate.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return false;
     }
 
@@ -174,6 +249,25 @@ fn is_high_entropy(candidate: &str) -> bool {
     } else {
         entropy >= 4.2
     }
+}
+
+fn is_uuid(value: &str) -> bool {
+    const HYPHENS: [usize; 4] = [8, 13, 18, 23];
+
+    value.len() == 36
+        && value.bytes().enumerate().all(|(index, byte)| {
+            if HYPHENS.contains(&index) {
+                byte == b'-'
+            } else {
+                byte.is_ascii_hexdigit()
+            }
+        })
+}
+
+fn is_url_context(text: &str, start: usize) -> bool {
+    let prefix = &text[..start];
+    let segment = prefix.rsplit(char::is_whitespace).next().unwrap_or("");
+    segment.contains("://") || segment.starts_with("//")
 }
 
 fn shannon_entropy(value: &str) -> f64 {

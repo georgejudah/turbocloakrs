@@ -3,8 +3,8 @@ use regex::{Regex, RegexSet};
 
 const STRONG_PATTERNS: &[(&str, &str)] = &[
     (
-        "ignore_previous",
-        r"(?i)\b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+)?(?:of\s+)?(?:the\s+)?(?:previous|prior|above|earlier|existing|system)\s+(?:instructions?|prompts?|rules?|directives?|context|guidelines?)\b",
+        "instruction_override",
+        r"(?i)\b(?:ignore|disregard|forget|override|bypass)\b[^.!?\n]{0,80}\b(?:instructions?|rules?|prompts?|directives?|guidelines?|restrictions?|safety|filters?|guardrails?|polic(?:y|ies)|context|system\s+message)\b",
     ),
     (
         "ignore_above",
@@ -19,20 +19,32 @@ const STRONG_PATTERNS: &[(&str, &str)] = &[
         r"(?i)\b(?:dan|do\s+anything\s+now|jailbreak|developer|god|unrestricted|evil)\s+mode\b",
     ),
     (
+        "do_anything_now",
+        r"(?i)\b(?:do\s+anything\s+now|act\s+as\s+dan|jailbroken)\b",
+    ),
+    (
         "reveal_prompt",
-        r"(?i)\b(?:reveal|print|show|leak|repeat|output|display)\s+(?:your|the)\s+(?:system\s+prompt|hidden\s+instructions|initial\s+prompt|instructions|rules)\b",
+        r"(?i)\b(?:reveal|print|show|leak|repeat|output|display)\s+(?:your|the)\s+(?:system\s+prompt|hidden\s+(?:prompt|instructions)|initial\s+prompt|instructions|rules|context)\b",
     ),
     (
         "new_instructions",
-        r"(?i)\b(?:new|updated|real|true)\s+instructions?\s*[:=]",
+        r"(?i)\b(?:new|updated|real|true)\s+(?:instructions?|rules?|directives?)\s*[:=]",
     ),
     (
         "role_override",
         r"(?i)\b(?:you\s+are\s+now|from\s+now\s+on\s+you\s+(?:are|will)|act\s+as\s+(?:if\s+you\s+have\s+no|an?\s+unrestricted))",
     ),
     (
+        "role_play",
+        r"(?i)\b(?:pretend|act|behave|roleplay)\b[^.!?\n]{0,60}\b(?:no\s+(?:rules|restrictions|limits|filters|guidelines)|unrestricted|unfiltered|unbounded)\b",
+    ),
+    (
+        "from_now_on",
+        r"(?i)\bfrom\s+now\s+on\b[^.!?\n]{0,60}\b(?:respond|answer|reply|obey|act|behave|output|only)\b",
+    ),
+    (
         "no_restrictions",
-        r"(?i)\b(?:without|ignore|bypass|disable|remove)\s+(?:any\s+|all\s+)?(?:restrictions?|safety|filters?|guardrails?|content\s+policy|limitations?)\b",
+        r"(?i)\b(?:without|ignore|bypass|disable|remove|override)\s+(?:any\s+|all\s+)?(?:your\s+|the\s+)?(?:restrictions?|safety|filters?|guardrails?|content\s+policy|limitations?|guidelines?)\b",
     ),
     (
         "do_not_follow",
@@ -45,7 +57,7 @@ const STRONG_PATTERNS: &[(&str, &str)] = &[
     ("chat_template", r"(?i)(?:<<SYS>>|</?system>|\[/?INST\])"),
     (
         "prompt_exfil",
-        r"(?is)\b(?:send|post|exfiltrate|upload|transmit|leak)\b.{0,80}\b(?:to|at|via)\b.{0,120}(?:https?://|webhook|api|email|@)",
+        r"(?is)\b(?:send|post|exfiltrate|upload|transmit|leak|email|forward)\b.{0,80}\b(?:to|at|via)\b.{0,120}(?:https?://|webhook|api|email|@)",
     ),
     (
         "repeat_above",
@@ -59,12 +71,14 @@ const STRONG_PATTERNS: &[(&str, &str)] = &[
 
 const EXFIL_PATTERNS: &[&str] = &[
     r"(?is)<\s*(?:script|iframe|object|embed)\b[^>]*>",
-    r#"(?is)<\s*img\b[^>]*\bsrc\s*=\s*['"]?\s*(?:https?:|data:|javascript:)[^>]*>"#,
-    r"(?is)!\[[^\]]{0,200}\]\(\s*(?:https?:|data:|javascript:)[^)]*\)",
+    r#"(?is)<\s*img\b[^>]*\bsrc\s*=\s*['"]?\s*(?:https?:|//|data:|javascript:)[^>]*>"#,
+    r"(?is)!\[[^\]]{0,200}\]\(\s*(?:https?:|//|data:|javascript:)[^)]*\)",
     r"(?is)\[[^\]]{0,200}\]\(\s*(?:javascript:|data:)[^)]*\)",
     r"(?i)\bdata:(?:text/html|application/javascript|image/svg\+xml)[;,]",
-    r#"(?is)<\s*(?:a|form)\b[^>]*(?:href|action)\s*=\s*['"]\s*(?:https?:|javascript:|data:)[^>]*>"#,
+    r#"(?is)<\s*(?:a|form)\b[^>]*(?:href|action)\s*=\s*['"]\s*(?:https?:|//|javascript:|data:)[^>]*>"#,
     r#"(?i)\b(?:curl|wget)\s+(?:-\S+\s+)*['"]?https?://"#,
+    r#"(?is)<meta\b[^>]*http-equiv\s*=\s*['"]?refresh['"]?[^>]*>"#,
+    r#"(?is)<\s*[a-z][a-z0-9]*\b[^>]*\bon[a-z]+\s*=\s*['"]?[^>]*>"#,
 ];
 
 static STRONG_RE: Lazy<Vec<Regex>> = Lazy::new(|| {
@@ -82,13 +96,6 @@ static STRONG_SET: Lazy<RegexSet> = Lazy::new(|| {
 static EXFIL_SET: Lazy<RegexSet> =
     Lazy::new(|| RegexSet::new(EXFIL_PATTERNS).expect("invalid exfiltration regex set"));
 
-static INVISIBLE_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(
-        r"[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2064}\x{2066}-\x{2069}\x{FEFF}\x{E0000}-\x{E007F}]",
-    )
-    .expect("invalid invisible character regex")
-});
-
 pub struct InjectionAnalysis {
     pub has_injection: bool,
     pub score: f32,
@@ -98,17 +105,18 @@ pub struct InjectionAnalysis {
 /// Inspect text for instruction overrides, hidden characters, and exfiltration
 /// vectors. The score is a bounded heuristic, not a probability estimate.
 pub fn analyze(text: &str) -> InjectionAnalysis {
-    let signature_count = if STRONG_SET.is_match(text) {
-        STRONG_RE
-            .iter()
-            .filter(|pattern| pattern.is_match(text))
-            .count()
-    } else {
-        0
-    };
+    let mut signature_count = strong_signature_count(text);
+
+    // Catch simple leetspeak and Cyrillic homoglyphs without penalizing the
+    // common case: normalization only runs when the original text misses.
+    if signature_count == 0 {
+        if let Some(normalized) = detection_normalized(text) {
+            signature_count = strong_signature_count(&normalized);
+        }
+    }
 
     let has_exfiltration = EXFIL_SET.is_match(text);
-    let has_obfuscation = INVISIBLE_RE.is_match(text);
+    let has_obfuscation = has_invisible(text);
 
     let mut score = 0.0_f32;
     if signature_count > 0 {
@@ -141,9 +149,120 @@ pub fn injection_score(text: &str) -> f32 {
 /// Remove zero-width, bidi-control, and Unicode-tag characters used to hide
 /// instructions from human reviewers.
 pub fn strip_invisible(text: &str) -> String {
-    if INVISIBLE_RE.is_match(text) {
-        INVISIBLE_RE.replace_all(text, "").into_owned()
+    if !has_invisible(text) {
+        return text.to_owned();
+    }
+
+    text.chars().filter(|ch| !is_invisible_char(*ch)).collect()
+}
+
+pub(crate) fn has_invisible(text: &str) -> bool {
+    text.chars().any(is_invisible_char)
+}
+
+pub(crate) fn is_invisible_char(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{2069}'
+            | '\u{FEFF}'
+            | '\u{E0000}'..='\u{E007F}'
+    )
+}
+
+fn strong_signature_count(text: &str) -> usize {
+    if !STRONG_SET.is_match(text) {
+        return 0;
+    }
+
+    let mut count = 0usize;
+
+    for ((label, _), pattern) in STRONG_PATTERNS.iter().zip(STRONG_RE.iter()) {
+        for matched in pattern.find_iter(text) {
+            if matches!(*label, "instruction_override" | "no_restrictions")
+                && is_negated(text, matched.start())
+            {
+                continue;
+            }
+
+            count += 1;
+            break;
+        }
+    }
+
+    count
+}
+
+fn is_negated(text: &str, start: usize) -> bool {
+    let prefix = &text[..start];
+    let word = prefix
+        .split_whitespace()
+        .last()
+        .unwrap_or("")
+        .trim_matches(|ch: char| !ch.is_alphanumeric() && ch != '\'')
+        .to_ascii_lowercase();
+
+    matches!(
+        word.as_str(),
+        "not" | "never" | "no" | "don't" | "doesn't" | "won't" | "cannot" | "can't"
+    )
+}
+
+fn detection_normalized(text: &str) -> Option<String> {
+    let mut changed = false;
+    let mut normalized = String::with_capacity(text.len());
+
+    for ch in text.chars() {
+        let mapped = normalize_char(ch);
+        if mapped != ch {
+            changed = true;
+        }
+        normalized.push(mapped);
+    }
+
+    if changed {
+        Some(normalized)
     } else {
-        text.to_owned()
+        None
+    }
+}
+
+fn normalize_char(ch: char) -> char {
+    match ch {
+        '0' => 'o',
+        '1' => 'i',
+        '3' => 'e',
+        '4' => 'a',
+        '5' => 's',
+        '7' => 't',
+        '@' => 'a',
+        '$' => 's',
+        '\u{0430}' => 'a',
+        '\u{0435}' => 'e',
+        '\u{043E}' => 'o',
+        '\u{0440}' => 'p',
+        '\u{0441}' => 'c',
+        '\u{0443}' => 'y',
+        '\u{0445}' => 'x',
+        '\u{0456}' => 'i',
+        '\u{0458}' => 'j',
+        '\u{0455}' => 's',
+        '\u{0410}' => 'A',
+        '\u{0412}' => 'B',
+        '\u{0415}' => 'E',
+        '\u{041A}' => 'K',
+        '\u{041C}' => 'M',
+        '\u{041D}' => 'H',
+        '\u{041E}' => 'O',
+        '\u{0420}' => 'P',
+        '\u{0421}' => 'C',
+        '\u{0422}' => 'T',
+        '\u{0425}' => 'X',
+        '\u{0406}' => 'I',
+        '\u{0408}' => 'J',
+        '\u{0405}' => 'S',
+        other => other,
     }
 }

@@ -45,6 +45,12 @@ static PII_PATTERNS: Lazy<Vec<PiiPattern>> = Lazy::new(|| {
             None,
         ),
         (
+            "email",
+            "EMAIL",
+            r"(?i)\b[A-Z0-9._%+\-]+\s*(?:\[|\()?\s*at\s*(?:\]|\))?\s*[A-Z0-9.\-]+\s*(?:\[|\()?\s*dot\s*(?:\]|\))?\s*[A-Z]{2,63}\b",
+            None,
+        ),
+        (
             "credit_card",
             "CREDIT_CARD",
             r"\b\d(?:[ -]?\d){12,18}\b",
@@ -56,10 +62,11 @@ static PII_PATTERNS: Lazy<Vec<PiiPattern>> = Lazy::new(|| {
             r"\b\d{3}[ -]\d{2}[ -]\d{4}\b",
             Some(is_valid_ssn),
         ),
+        ("ssn", "SSN", r"\b\d{9}\b", Some(is_valid_ssn)),
         (
             "ipv4",
             "IPV4",
-            r"\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b",
+            r"\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[01]?\d?\d)\b",
             None,
         ),
         (
@@ -77,7 +84,14 @@ static PII_PATTERNS: Lazy<Vec<PiiPattern>> = Lazy::new(|| {
         (
             "phone",
             "PHONE",
-            r"\b\+\d{1,3}[\s.\-]?(?:\d[\s.\-]?){6,14}\d\b",
+            r"\+\d{1,3}[\s.\-]?(?:\d[\s.\-]?){6,14}\d\b",
+            Some(is_valid_phone),
+        ),
+        ("phone", "PHONE", r"\b[2-9]\d{9}\b", Some(is_valid_phone)),
+        (
+            "phone",
+            "PHONE",
+            r"\b0\d{2,4}[\s.\-]\d{3,4}[\s.\-]?\d{3,4}\b",
             Some(is_valid_phone),
         ),
     ];
