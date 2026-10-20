@@ -1,0 +1,43 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "cloakrs"
+dynamic = ["version"]
+description = "Sub-millisecond PII redaction, secret scanning, and prompt-injection detection for AI agents."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["pii", "privacy", "security", "llm", "redaction", "prompt-injection"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Security",
+    "Topic :: Text Processing",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/georgejudah/turbocloakrs"
+Repository = "https://github.com/georgejudah/turbocloakrs"
+Issues = "https://github.com/georgejudah/turbocloakrs/issues"
+
+[tool.maturin]
+python-source = "python"
+module-name = "cloakrs._cloakrs"
+features = ["pyo3/extension-module"]
+strip = true

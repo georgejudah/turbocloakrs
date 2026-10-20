@@ -1,0 +1,14 @@
+/target/
+/dist/
+/.venv/
+/.maturin/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.so
+*.pyd
+.DS_Store
+.idea/
+.vscode/
