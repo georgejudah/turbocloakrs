@@ -72,7 +72,7 @@ fn inspect_all(text: &str) -> SafetyReport {
 }
 
 #[pymodule]
-fn _cloakrs(module: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _turbocloak(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Vault>()?;
     module.add_class::<SafetyReport>()?;
 

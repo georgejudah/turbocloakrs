@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 /// The vault is intentionally session-scoped: callers can send a redacted
 /// prompt to a remote model and restore the original values only after the
 /// response comes back, without ever exposing PII to the model provider.
-#[pyclass(module = "cloakrs", skip_from_py_object)]
+#[pyclass(module = "turbocloak", skip_from_py_object)]
 #[derive(Debug, Default, Clone)]
 pub struct Vault {
     forward: HashMap<String, String>,

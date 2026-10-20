@@ -1,5 +1,5 @@
 [package]
-name = "cloakrs"
+name = "turbocloak"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.83"
@@ -11,7 +11,7 @@ keywords = ["pii", "privacy", "security", "llm", "redaction"]
 categories = ["development-tools", "text-processing"]
 
 [lib]
-name = "_cloakrs"
+name = "_turbocloak"
 crate-type = ["cdylib"]
 
 [dependencies]

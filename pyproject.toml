@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "cloakrs"
+name = "turbocloak"
 dynamic = ["version"]
 description = "Sub-millisecond PII redaction, secret scanning, and prompt-injection detection for AI agents."
 readme = "README.md"
@@ -38,6 +38,6 @@ Issues = "https://github.com/georgejudah/turbocloakrs/issues"
 
 [tool.maturin]
 python-source = "python"
-module-name = "cloakrs._cloakrs"
+module-name = "turbocloak._turbocloak"
 features = ["pyo3/extension-module"]
 strip = true

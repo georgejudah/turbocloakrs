@@ -4,7 +4,7 @@ The performance-critical engine is implemented in Rust and exposed through
 PyO3. All public functions are safe to call from regular Python code.
 """
 
-from ._cloakrs import (
+from ._turbocloak import (
     SafetyReport,
     Vault,
     __version__,

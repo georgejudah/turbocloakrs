@@ -87,7 +87,7 @@ jobs:
   release:
     name: Attach artifacts to release
     needs: [wheels, sdist]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-test')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -101,14 +101,33 @@ jobs:
           files: dist/*
           generate_release_notes: true
 
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: [wheels, sdist]
+    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-test')
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/turbocloak
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
   publish-pypi:
     name: Publish to PyPI
     needs: [wheels, sdist]
-    if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLISH_TO_PYPI == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-test') && vars.PUBLISH_TO_PYPI == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/cloakrs
+      url: https://pypi.org/p/turbocloak
     permissions:
       id-token: write
     steps:

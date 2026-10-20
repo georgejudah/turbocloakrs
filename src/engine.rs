@@ -274,7 +274,7 @@ fn is_valid_phone(value: &str) -> bool {
 }
 
 /// Consolidated result of a full safety inspection.
-#[pyclass(module = "cloakrs", skip_from_py_object)]
+#[pyclass(module = "turbocloak", skip_from_py_object)]
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct SafetyReport {
