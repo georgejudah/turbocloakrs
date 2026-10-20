@@ -1,5 +1,10 @@
 # turbocloak
 
+[![PyPI](https://img.shields.io/pypi/v/turbocloak.svg)](https://pypi.org/project/turbocloak/)
+[![Python versions](https://img.shields.io/pypi/pyversions/turbocloak.svg)](https://pypi.org/project/turbocloak/)
+[![CI](https://github.com/georgejudah/turbocloakrs/actions/workflows/ci.yml/badge.svg)](https://github.com/georgejudah/turbocloakrs/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Sub-millisecond PII redaction, secret scanning, and prompt-injection detection
 for AI agents. The core engine is written in Rust, exposed to Python with PyO3,
 and packaged with Maturin.
@@ -120,6 +125,13 @@ git push origin v0.1.0-test1
 
 Test tags publish only to TestPyPI; regular tags build wheels and publish to
 PyPI when `PUBLISH_TO_PYPI` is enabled.
+
+## Links
+
+- [PyPI](https://pypi.org/project/turbocloak/)
+- [Changelog](CHANGELOG.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
 
 ## License
 
